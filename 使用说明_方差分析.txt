@@ -1,0 +1,62 @@
+═══════════════════════════════════════════════════════════
+  方差分布分析功能 - 使用指南
+═══════════════════════════════════════════════════════════
+
+【功能说明】
+自动分析并记录：
+1. 每层卷积核权重的方差分布
+2. 每层激活值的方差分布
+
+【运行命令】
+python main.py --mode analyze_variance --backend fbgemm
+
+【输出结果】
+./outputs/variance_analysis/
+  ├── weight_variance.json      # 权重方差统计
+  └── activation_variance.json  # 激活值方差统计
+
+【文件格式】
+
+1. weight_variance.json - 记录每个卷积层：
+   {
+     "conv1_1.conv": {
+       "mean": -0.0008,           # 权重均值
+       "var": 0.0157,             # 权重方差
+       "std": 0.1255,             # 权重标准差
+       "min": -0.7377,            # 最小值
+       "max": 0.6432,             # 最大值
+       "shape": [64, 3, 3, 3],    # 权重形状
+       "per_channel_var_mean": 0.0163,  # 各通道方差的均值
+       "per_channel_var_std": 0.0216    # 各通道方差的标准差
+     }
+   }
+
+2. activation_variance.json - 记录每层激活：
+   {
+     "block_output.conv1_1": {
+       "mean_avg": 0.1301,        # 激活均值（10个batch平均）
+       "var_avg": 0.0476,         # 激活方差（10个batch平均）
+       "std_avg": 0.2181,         # 激活标准差（10个batch平均）
+       "shape": [128, 64, 32, 32],# 激活形状
+       "num_samples": 10          # 统计的batch数量
+     }
+   }
+
+【应用场景】
+✓ 识别量化敏感层（方差大的层对量化更敏感）
+✓ 优化激活值近似策略（根据方差设计近似规则）
+✓ 分析模型压缩潜力（评估各层信息量）
+✓ 调试量化问题（对比量化前后方差变化）
+
+【关键发现示例】
+从运行结果可以看出：
+- conv1_1 的权重方差最大 (0.0157)，说明第一层对量化最敏感
+- classifier.fc2.out 的激活方差最大 (21.48)，输出层激活范围很大
+- 随着网络加深，权重方差逐渐减小（conv1 > conv2 > conv3）
+
+【代码修改说明】
+1. recorder.py: 新增 WeightVarianceRecorder 类和方差统计功能
+2. activation_tools.py: 新增 analyze_variance_distribution() 函数
+3. main.py: 新增 analyze_variance 模式
+
+═══════════════════════════════════════════════════════════
